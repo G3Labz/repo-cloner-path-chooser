@@ -18,7 +18,7 @@ fi
 # Get the repository URL from the argument
 REPO_URL="$1"
 
-# Extract the repository name from the URL
+# Extract the repository name from the URL (default name of the repo)
 REPO_NAME=$(basename -s .git "$REPO_URL")
 
 # Prompt the user to select a predefined path
