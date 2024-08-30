@@ -1,0 +1,8 @@
+# Ignore everything
+*
+
+# Except the cloner.sh file
+!cloner.sh
+
+#yeah, sure, would be great if it did not ignored the gitignore file
+!.gitignore
