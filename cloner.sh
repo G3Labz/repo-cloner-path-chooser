@@ -18,45 +18,49 @@ REPO_URL="$1"
 # Extract the repository name from the URL (default name of the repo)
 REPO_NAME=$(basename -s .git "$REPO_URL")
 
-# Function to list directories and allow navigation
+# Function to select a directory
 select_directory() {
     local CURRENT_PATH="$1"
-    
-    while true; do
-        # List child directories of the current path, excluding hidden directories
-        IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH" -not -name '.*'))
-        
-        # Check if there are any subdirectories
-        if [ ${#DIRECTORIES[@]} -eq 0 ]; then
-            echo "No more subdirectories to choose from."
+
+    # List child directories of the current path, excluding hidden directories
+    IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH" -not -name '.*'))
+
+    # Check if there are any subdirectories
+    if [ ${#DIRECTORIES[@]} -eq 0 ]; then
+        echo "No subdirectories available, staying in the current directory."
+        echo "$CURRENT_PATH"
+        return
+    fi
+
+    # Display options to the user
+    echo "Please select a directory or stay in the current directory ($CURRENT_PATH):"
+    select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
+        if [[ "$REPLY" -le ${#DIRECTORIES[@]} && "$REPLY" -gt 0 ]]; then
+            if [[ "$DIR" == "Stay in the current directory" ]]; then
+                echo "Selected current directory: $CURRENT_PATH"
+                echo "$CURRENT_PATH"
+                return
+            else
+                # Ask if the user wants to navigate deeper
+                echo "Do you want to go deeper into $DIR? (y/n)"
+                read -r answer
+                if [[ "$answer" =~ ^[Yy]$ ]]; then
+                    # Recursively call select_directory for deeper navigation
+                    select_directory "$DIR"
+                    return
+                else
+                    echo "Selected directory: $DIR"
+                    echo "$DIR"
+                    return
+                fi
+            fi
+        elif [[ "$DIR" == "Stay in the current directory" ]]; then
+            echo "Selected current directory: $CURRENT_PATH"
             echo "$CURRENT_PATH"
             return
+        else
+            echo "Invalid selection. Please try again."
         fi
-        
-        echo "Please select a directory or choose to stay in the current directory ($CURRENT_PATH):"
-        select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
-            if [[ "$REPLY" -le ${#DIRECTORIES[@]} && "$REPLY" -gt 0 ]]; then
-                if [[ "$DIR" == "Stay in the current directory" ]]; then
-                    echo "Selected current directory: $CURRENT_PATH"
-                    echo "$CURRENT_PATH"
-                    return
-                elif [[ -d "$DIR" ]]; then
-                    # Ask if the user wants to navigate deeper
-                    echo "Do you want to go deeper into $DIR? (y/n)"
-                    read -r answer
-                    if [[ "$answer" =~ ^[Yy]$ ]]; then
-                        CURRENT_PATH="$DIR"
-                        break
-                    else
-                        echo "Selected directory: $DIR"
-                        echo "$DIR"
-                        return
-                    fi
-                fi
-            else
-                echo "Invalid selection. Please try again."
-            fi
-        done
     done
 }
 
