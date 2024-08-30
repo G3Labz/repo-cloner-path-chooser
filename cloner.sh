@@ -18,6 +18,9 @@ REPO_URL="$1"
 # Extract the repository name from the URL (default name of the repo)
 REPO_NAME=$(basename -s .git "$REPO_URL")
 
+# Initialization of the CLONE_PATH variable
+CLONE_PATH=""
+
 # Function to select a directory
 select_directory() {
     local CURRENT_PATH="$1"
@@ -28,19 +31,20 @@ select_directory() {
     # Check if there are any subdirectories
     if [ ${#DIRECTORIES[@]} -eq 0 ]; then
         echo "No subdirectories available, staying in the current directory."
-        echo "$CURRENT_PATH"
+        CLONE_PATH="$CURRENT_PATH"
         return
     fi
 
     # Display options to the user
     echo "Please select a directory or stay in the current directory ($CURRENT_PATH):"
+    echo ""
     select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
         if [[ "$REPLY" -le $((${#DIRECTORIES[@]} + 1)) && "$REPLY" -gt 0 ]]; then
             if [[ "$DIR" == "Stay in the current directory" ]]; then
                 echo "Selected current directory: $CURRENT_PATH"
-                echo "$CURRENT_PATH"
+                CLONE_PATH=$CURRENT_PATH
                 return
-            else
+            elif [[ -d "$DIR" ]]; then
                 # Ask if the user wants to navigate deeper
                 echo "Do you want to go deeper into $DIR? (y/n)"
                 read -r answer
@@ -50,14 +54,10 @@ select_directory() {
                     return
                 else
                     echo "Selected directory: $DIR"
-                    echo "$DIR"
+                    CLONE_PATH=$DIR
                     return
                 fi
             fi
-        elif [[ "$DIR" == "Stay in the current directory" ]]; then
-            echo "Selected current directory: $CURRENT_PATH"
-            echo "$CURRENT_PATH"
-            return
         else
             echo "Invalid selection. Please try again."
         fi
@@ -65,11 +65,7 @@ select_directory() {
 }
 
 # Start directory selection from the root path
-CLONE_PATH=$(select_directory "$ROOT_PATH")
-
-echo "#####"
-echo "$CLONE_PATH"
-echo "#####"
+select_directory "$ROOT_PATH"
 
 # Trim any trailing slashes from CLONE_PATH
 CLONE_PATH="${CLONE_PATH%/}"
