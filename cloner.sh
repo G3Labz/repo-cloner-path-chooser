@@ -3,8 +3,8 @@
 # Define the root directory where the script is stored
 ROOT_PATH="$(dirname "$0")"
 
-# Define the predefined path for cloning repositories
-CLONE_PATH="$ROOT_PATH/repos"
+# Define the predefined paths for cloning repositories
+PREDEFINED_PATHS=("$ROOT_PATH/repos1" "$ROOT_PATH/repos2" "$ROOT_PATH/repos3")
 
 # Define the predefined user email
 USER_EMAIL="your-email@example.com"
@@ -15,14 +15,24 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-# Create the predefined path if it doesn't exist
-mkdir -p "$CLONE_PATH"
-
 # Get the repository URL from the argument
 REPO_URL="$1"
 
 # Extract the repository name from the URL
 REPO_NAME=$(basename -s .git "$REPO_URL")
+
+# Prompt the user to select a predefined path
+echo "Please select the path to clone the repository into:"
+select CLONE_PATH in "${PREDEFINED_PATHS[@]}"; do
+    if [[ -n "$CLONE_PATH" ]]; then
+        break
+    else
+        echo "Invalid selection. Please try again."
+    fi
+done
+
+# Create the selected path if it doesn't exist
+mkdir -p "$CLONE_PATH"
 
 # Define the full path where the repository will be cloned
 TARGET_PATH="$CLONE_PATH/$REPO_NAME"
