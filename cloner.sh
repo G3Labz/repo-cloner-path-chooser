@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the root directory where the script is stored
-ROOT_PATH="$(dirname "$0")"
+ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
 
 # Define the predefined user email
 USER_EMAIL="your-email@example.com"
@@ -29,7 +29,8 @@ select_directory() {
         # Check if there are any subdirectories
         if [ ${#DIRECTORIES[@]} -eq 0 ]; then
             echo "No more subdirectories to choose from."
-            break
+            echo "$CURRENT_PATH"
+            return
         fi
         
         echo "Please select a directory or choose to stay in the current directory ($CURRENT_PATH):"
@@ -66,11 +67,14 @@ select_directory() {
 # Start directory selection from the root path
 CLONE_PATH=$(select_directory "$ROOT_PATH")
 
-# Create the selected path if it doesn't exist
-mkdir -p "$CLONE_PATH"
+# Trim any trailing slashes from CLONE_PATH
+CLONE_PATH="${CLONE_PATH%/}"
 
 # Define the full path where the repository will be cloned
 TARGET_PATH="$CLONE_PATH/$REPO_NAME"
+
+# Create the selected path if it doesn't exist
+mkdir -p "$CLONE_PATH"
 
 # Clone the repository into the target path
 git clone "$REPO_URL" "$TARGET_PATH"
