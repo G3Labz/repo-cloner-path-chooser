@@ -3,9 +3,6 @@
 # Define the root directory where the script is stored
 ROOT_PATH="$(dirname "$0")"
 
-# Define the predefined paths for cloning repositories
-PREDEFINED_PATHS=("$ROOT_PATH/repos1" "$ROOT_PATH/repos2" "$ROOT_PATH/repos3")
-
 # Define the predefined user email
 USER_EMAIL="your-email@example.com"
 
@@ -21,15 +18,47 @@ REPO_URL="$1"
 # Extract the repository name from the URL (default name of the repo)
 REPO_NAME=$(basename -s .git "$REPO_URL")
 
-# Prompt the user to select a predefined path
-echo "Please select the path to clone the repository into:"
-select CLONE_PATH in "${PREDEFINED_PATHS[@]}"; do
-    if [[ -n "$CLONE_PATH" ]]; then
-        break
-    else
-        echo "Invalid selection. Please try again."
-    fi
-done
+# Function to list directories and allow navigation
+select_directory() {
+    local CURRENT_PATH="$1"
+    
+    while true; do
+        # List child directories of the current path
+        DIRECTORIES=("$CURRENT_PATH"/*/)
+        
+        # Check if there are any subdirectories
+        if [ ${#DIRECTORIES[@]} -eq 0 ]; then
+            echo "No more subdirectories to choose from."
+            break
+        fi
+        
+        echo "Please select a directory or choose to stay in the current directory ($CURRENT_PATH):"
+        select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
+            if [[ "$DIR" == "Stay in the current directory" ]]; then
+                echo "Selected current directory: $CURRENT_PATH"
+                echo "$CURRENT_PATH"
+                return
+            elif [[ -d "$DIR" ]]; then
+                # Ask if the user wants to navigate deeper
+                echo "Do you want to go deeper into $DIR? (y/n)"
+                read -r answer
+                if [[ "$answer" =~ ^[Yy]$ ]]; then
+                    CURRENT_PATH="$DIR"
+                    break
+                else
+                    echo "Selected directory: $DIR"
+                    echo "$DIR"
+                    return
+                fi
+            else
+                echo "Invalid selection. Please try again."
+            fi
+        done
+    done
+}
+
+# Start directory selection from the root path
+CLONE_PATH=$(select_directory "$ROOT_PATH")
 
 # Create the selected path if it doesn't exist
 mkdir -p "$CLONE_PATH"
