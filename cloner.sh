@@ -23,8 +23,8 @@ select_directory() {
     local CURRENT_PATH="$1"
     
     while true; do
-        # List child directories of the current path
-        IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH"))
+        # List child directories of the current path, excluding hidden directories
+        IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH" -not -name '.*'))
         
         # Check if there are any subdirectories
         if [ ${#DIRECTORIES[@]} -eq 0 ]; then
@@ -35,12 +35,12 @@ select_directory() {
         
         echo "Please select a directory or choose to stay in the current directory ($CURRENT_PATH):"
         select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
-            if [[ "$REPLY" -gt 0 && "$REPLY" -le ${#DIRECTORIES[@]} ]]; then
+            if [[ "$REPLY" -le ${#DIRECTORIES[@]} && "$REPLY" -gt 0 ]]; then
                 if [[ "$DIR" == "Stay in the current directory" ]]; then
                     echo "Selected current directory: $CURRENT_PATH"
                     echo "$CURRENT_PATH"
                     return
-                else
+                elif [[ -d "$DIR" ]]; then
                     # Ask if the user wants to navigate deeper
                     echo "Do you want to go deeper into $DIR? (y/n)"
                     read -r answer
@@ -53,10 +53,6 @@ select_directory() {
                         return
                     fi
                 fi
-            elif [[ "$DIR" == "Stay in the current directory" ]]; then
-                echo "Selected current directory: $CURRENT_PATH"
-                echo "$CURRENT_PATH"
-                return
             else
                 echo "Invalid selection. Please try again."
             fi
@@ -70,11 +66,11 @@ CLONE_PATH=$(select_directory "$ROOT_PATH")
 # Trim any trailing slashes from CLONE_PATH
 CLONE_PATH="${CLONE_PATH%/}"
 
-# Define the full path where the repository will be cloned
-TARGET_PATH="$CLONE_PATH/$REPO_NAME"
-
 # Create the selected path if it doesn't exist
 mkdir -p "$CLONE_PATH"
+
+# Define the full path where the repository will be cloned
+TARGET_PATH="$CLONE_PATH/$REPO_NAME"
 
 # Clone the repository into the target path
 git clone "$REPO_URL" "$TARGET_PATH"
