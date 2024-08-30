@@ -35,7 +35,7 @@ select_directory() {
     # Display options to the user
     echo "Please select a directory or stay in the current directory ($CURRENT_PATH):"
     select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
-        if [[ "$REPLY" -le ${#DIRECTORIES[@]} && "$REPLY" -gt 0 ]]; then
+        if [[ "$REPLY" -le $((${#DIRECTORIES[@]} + 1)) && "$REPLY" -gt 0 ]]; then
             if [[ "$DIR" == "Stay in the current directory" ]]; then
                 echo "Selected current directory: $CURRENT_PATH"
                 echo "$CURRENT_PATH"
@@ -66,6 +66,10 @@ select_directory() {
 
 # Start directory selection from the root path
 CLONE_PATH=$(select_directory "$ROOT_PATH")
+
+echo "#####"
+echo "$CLONE_PATH"
+echo "#####"
 
 # Trim any trailing slashes from CLONE_PATH
 CLONE_PATH="${CLONE_PATH%/}"
