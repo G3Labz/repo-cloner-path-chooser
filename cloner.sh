@@ -24,7 +24,7 @@ select_directory() {
     
     while true; do
         # List child directories of the current path
-        DIRECTORIES=("$CURRENT_PATH"/*/)
+        IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH"))
         
         # Check if there are any subdirectories
         if [ ${#DIRECTORIES[@]} -eq 0 ]; then
@@ -34,22 +34,28 @@ select_directory() {
         
         echo "Please select a directory or choose to stay in the current directory ($CURRENT_PATH):"
         select DIR in "${DIRECTORIES[@]}" "Stay in the current directory"; do
-            if [[ "$DIR" == "Stay in the current directory" ]]; then
+            if [[ "$REPLY" -gt 0 && "$REPLY" -le ${#DIRECTORIES[@]} ]]; then
+                if [[ "$DIR" == "Stay in the current directory" ]]; then
+                    echo "Selected current directory: $CURRENT_PATH"
+                    echo "$CURRENT_PATH"
+                    return
+                else
+                    # Ask if the user wants to navigate deeper
+                    echo "Do you want to go deeper into $DIR? (y/n)"
+                    read -r answer
+                    if [[ "$answer" =~ ^[Yy]$ ]]; then
+                        CURRENT_PATH="$DIR"
+                        break
+                    else
+                        echo "Selected directory: $DIR"
+                        echo "$DIR"
+                        return
+                    fi
+                fi
+            elif [[ "$DIR" == "Stay in the current directory" ]]; then
                 echo "Selected current directory: $CURRENT_PATH"
                 echo "$CURRENT_PATH"
                 return
-            elif [[ -d "$DIR" ]]; then
-                # Ask if the user wants to navigate deeper
-                echo "Do you want to go deeper into $DIR? (y/n)"
-                read -r answer
-                if [[ "$answer" =~ ^[Yy]$ ]]; then
-                    CURRENT_PATH="$DIR"
-                    break
-                else
-                    echo "Selected directory: $DIR"
-                    echo "$DIR"
-                    return
-                fi
             else
                 echo "Invalid selection. Please try again."
             fi
