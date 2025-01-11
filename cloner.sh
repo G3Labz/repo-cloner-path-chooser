@@ -4,10 +4,14 @@
 ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
 
 # Define the predefined user email
-USER_EMAIL="your-email@example.com"
+USER_EMAIL=$USER_EMAIL
+
+if [ -z "$USER_EMAIL" ]; then
+    USER_EMAIL=(git config --global user.email)    
+fi
 
 # Check if a repository link was provided
-if [ -z "$1" ]; then
+if [ -z "$1" || -z "$REPO_URL" ]; then
     echo "Usage: $0 <repository-url>"
     exit 1
 fi
@@ -85,8 +89,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+USER_DEFAULT_NAME=$(git config --global user.name)
+
 # Set the local Git config user email
 cd "$TARGET_PATH" || exit
 git config --local user.email "$USER_EMAIL"
+git config --local user.name "$USER_DEFAULT_NAME"
 
-echo "Repository cloned to $TARGET_PATH and user.email set to $USER_EMAIL"
+echo "Repository cloned to $TARGET_PATH and user.email set to $USER_EMAIL and user.name set to $USER_DEFAULT_NAME."
