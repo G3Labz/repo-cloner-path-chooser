@@ -81,7 +81,7 @@ mkdir -p "$CLONE_PATH"
 TARGET_PATH="$CLONE_PATH/$REPO_NAME"
 
 # Clone the repository into the target path
-git clone "$REPO_URL" "$TARGET_PATH"
+git clone "$REPO_URL" "$TARGET_PATH" -b develop
 
 # Check if the clone was successful
 if [ $? -ne 0 ]; then
