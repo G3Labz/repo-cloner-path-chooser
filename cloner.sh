@@ -5,19 +5,21 @@ ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
 
 # Define the predefined user email
 USER_EMAIL=$USER_EMAIL
+REPO_URL=$REPO_URL
 
 if [ -z "$USER_EMAIL" ]; then
-    USER_EMAIL=(git config --global user.email)    
+    USER_EMAIL=$(git config --global user.email)    
 fi
 
 # Check if a repository link was provided
-if [ -z "$1" || -z "$REPO_URL" ]; then
-    echo "Usage: $0 <repository-url>"
+if [[ -z "$1" && -z "$REPO_URL" ]]; then
+    echo "Usage: $0 <repository-url> 1:$1 repo:$REPO_URL"
     exit 1
 fi
 
-# Get the repository URL from the argument
-REPO_URL="$1"
+if [[ -n "$1" && -z "$REPO_URL" ]]; then
+    REPO_URL=$1
+fi
 
 # Extract the repository name from the URL (default name of the repo)
 REPO_NAME=$(basename -s .git "$REPO_URL")
@@ -49,18 +51,9 @@ select_directory() {
                 CLONE_PATH=$CURRENT_PATH
                 return
             elif [[ -d "$DIR" ]]; then
-                # Ask if the user wants to navigate deeper
-                echo "Do you want to go deeper into $DIR? (y/n)"
-                read -r answer
-                if [[ "$answer" =~ ^[Yy]$ ]]; then
-                    # Recursively call select_directory for deeper navigation
-                    select_directory "$DIR"
-                    return
-                else
-                    echo "Selected directory: $DIR"
-                    CLONE_PATH=$DIR
-                    return
-                fi
+                # Recursively call select_directory for deeper navigation
+                select_directory "$DIR"
+                return
             fi
         else
             echo "Invalid selection. Please try again."
@@ -74,11 +67,17 @@ select_directory "$ROOT_PATH"
 # Trim any trailing slashes from CLONE_PATH
 CLONE_PATH="${CLONE_PATH%/}"
 
+echo "Selected path: $CLONE_PATH"
+
 # Create the selected path if it doesn't exist
 mkdir -p "$CLONE_PATH"
 
 # Define the full path where the repository will be cloned
 TARGET_PATH="$CLONE_PATH/$REPO_NAME"
+
+echo "Cloning repository to $TARGET_PATH"
+
+echo "Cloning repository from $REPO_URL"
 
 # Clone the repository into the target path
 git clone "$REPO_URL" "$TARGET_PATH" -b develop
