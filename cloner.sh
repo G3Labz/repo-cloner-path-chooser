@@ -84,8 +84,11 @@ git clone "$REPO_URL" "$TARGET_PATH" -b develop
 
 # Check if the clone was successful
 if [ $? -ne 0 ]; then
-    echo "Failed to clone repository."
-    exit 1
+    echo "Failed to clone by develop branch. Trying again using deafult branch..."
+    git clone "$REPO_URL" "$TARGET_PATH"
+	if [ $? -ne 0 ]; then
+	    echo "Failed to clone repository."
+	fi
 fi
 
 USER_DEFAULT_NAME=$(git config --global user.name)
