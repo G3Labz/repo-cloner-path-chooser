@@ -4,7 +4,7 @@
 ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
 HISTORY_FILE="$ROOT_PATH/.cloned_history"
 
-# Feature 5: Handle --history / -h flag
+# Feature 5a: Handle --history / -h flag
 if [[ "$1" == "--history" || "$1" == "-h" || "$1" == "history" ]]; then
     if [ -f "$HISTORY_FILE" ]; then
         echo "=========================================================="
@@ -12,8 +12,58 @@ if [[ "$1" == "--history" || "$1" == "-h" || "$1" == "history" ]]; then
         echo "=========================================================="
         cat "$HISTORY_FILE"
     else
-        echo "No clone history found yet."
+        echo "No clone history found yet. Run '$0 --scan' to discover existing repositories."
     fi
+    exit 0
+fi
+
+# Feature 5b: Handle --scan / --backfill to populate history from existing repositories
+if [[ "$1" == "--scan" || "$1" == "--backfill" || "$1" == "scan" || "$1" == "backfill" ]]; then
+    echo "=========================================================="
+    echo " Scanning existing Git repositories under $ROOT_PATH..."
+    echo "=========================================================="
+    
+    count=0
+    added=0
+
+    # Find all .git directories under ROOT_PATH (depth >= 2)
+    while IFS= read -r git_dir; do
+        repo_dir="$(dirname "$git_dir")"
+        repo_name="$(basename "$repo_dir")"
+        
+        # Skip ROOT_PATH itself
+        if [ "$repo_dir" = "$ROOT_PATH" ]; then
+            continue
+        fi
+
+        count=$((count + 1))
+        
+        branch=$(git -C "$repo_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        email=$(git -C "$repo_dir" config user.email 2>/dev/null)
+        if [ -z "$email" ]; then
+            email="not-configured"
+        fi
+        
+        # Get last commit timestamp if available, else system date
+        timestamp=$(git -C "$repo_dir" log -1 --format="%cd" --date=format:"%Y-%m-%d %H:%M:%S" 2>/dev/null)
+        if [ -z "$timestamp" ]; then
+            timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+        fi
+
+        log_entry="[$timestamp] $repo_name -> $repo_dir ($branch) [$email]"
+
+        # Avoid duplicates by checking if repo_dir is already in HISTORY_FILE
+        if [ -f "$HISTORY_FILE" ] && grep -Fq "$repo_dir (" "$HISTORY_FILE" 2>/dev/null; then
+            echo "  [EXISTS] $repo_name ($repo_dir)"
+        else
+            echo "$log_entry" >> "$HISTORY_FILE"
+            echo "  [ADDED]  $repo_name -> $repo_dir ($branch)"
+            added=$((added + 1))
+        fi
+    done < <(find "$ROOT_PATH" -mindepth 2 -name ".git" -type d)
+
+    echo ""
+    echo "Scan complete: Found $count repositories ($added new entries added to history)."
     exit 0
 fi
 
@@ -33,7 +83,7 @@ fi
 
 if [ -z "$REPO_URL" ]; then
     echo "Error: No repository URL provided."
-    echo "Usage: $0 <repository-url> | --history"
+    echo "Usage: $0 <repository-url> | --history | --scan"
     exit 1
 fi
 
