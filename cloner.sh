@@ -79,27 +79,35 @@ TARGET_PATH="$CLONE_PATH/$REPO_NAME"
 echo "Cloning repository to $TARGET_PATH"
 echo "Cloning repository from $REPO_URL"
 
-# Clone the repository into the target path (trying 'develop' branch first)
-git clone "$REPO_URL" "$TARGET_PATH" -b develop
-
-# Check if the clone was successful
+# Clone the repository using the default branch first
+git clone "$REPO_URL" "$TARGET_PATH"
 if [ $? -ne 0 ]; then
-    echo "Failed to clone 'develop' branch. Cleaning up and trying again using default branch..."
-    if [ -d "$TARGET_PATH" ]; then
-        rm -rf "$TARGET_PATH"
-    fi
-
-    git clone "$REPO_URL" "$TARGET_PATH"
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to clone repository."
-        exit 1
-    fi
+    echo "Error: Failed to clone repository."
+    exit 1
 fi
+
+# Enter target directory
+cd "$TARGET_PATH" || exit 1
+
+# Check for preferred branches in priority order (develop, dev, master, main)
+PREFERRED_BRANCHES=("develop" "dev" "master" "main")
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+for branch in "${PREFERRED_BRANCHES[@]}"; do
+    if [ "$CURRENT_BRANCH" = "$branch" ]; then
+        echo "Already on preferred branch '$branch'."
+        break
+    fi
+    if git rev-parse --verify --quiet "origin/$branch" >/dev/null; then
+        echo "Found branch '$branch' on remote. Switching to '$branch'..."
+        git checkout "$branch"
+        break
+    fi
+done
 
 USER_DEFAULT_NAME=$(git config --global user.name)
 
 # Set the local Git config user email and name
-cd "$TARGET_PATH" || exit 1
 if [ -n "$USER_EMAIL" ]; then
     git config --local user.email "$USER_EMAIL"
 fi
@@ -107,5 +115,6 @@ if [ -n "$USER_DEFAULT_NAME" ]; then
     git config --local user.name "$USER_DEFAULT_NAME"
 fi
 
-echo "Repository successfully cloned to $TARGET_PATH."
+ACTIVE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Repository successfully cloned to $TARGET_PATH (Active branch: $ACTIVE_BRANCH)."
 echo "Local Git configuration updated: user.email='$USER_EMAIL', user.name='$USER_DEFAULT_NAME'."
