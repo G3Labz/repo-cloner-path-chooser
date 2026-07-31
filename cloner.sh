@@ -3,9 +3,9 @@
 # Define the root directory where the script is stored
 ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
 
-# Define the predefined user email
-USER_EMAIL=$USER_EMAIL
-REPO_URL=$REPO_URL
+# Use environment variables if set
+USER_EMAIL="${USER_EMAIL:-}"
+REPO_URL="${REPO_URL:-}"
 
 if [ -z "$USER_EMAIL" ]; then
     USER_EMAIL=$(git config --global user.email)    
@@ -13,12 +13,12 @@ fi
 
 # Check if a repository link was provided
 if [[ -z "$1" && -z "$REPO_URL" ]]; then
-    echo "Usage: $0 <repository-url> 1:$1 repo:$REPO_URL"
+    echo "Usage: $0 <repository-url>"
     exit 1
 fi
 
-if [[ -n "$1" && -z "$REPO_URL" ]]; then
-    REPO_URL=$1
+if [[ -n "$1" ]]; then
+    REPO_URL="$1"
 fi
 
 # Extract the repository name from the URL (default name of the repo)
@@ -32,7 +32,8 @@ select_directory() {
     local CURRENT_PATH="$1"
 
     # List child directories of the current path, excluding hidden directories
-    IFS=$'\n' DIRECTORIES=($(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH" -not -name '.*'))
+    local DIRECTORIES=()
+    mapfile -t DIRECTORIES < <(find "$CURRENT_PATH" -maxdepth 1 -type d -not -path "$CURRENT_PATH" -not -name '.*' | sort)
 
     # Check if there are any subdirectories
     if [ ${#DIRECTORIES[@]} -eq 0 ]; then
@@ -48,7 +49,7 @@ select_directory() {
         if [[ "$REPLY" -le $((${#DIRECTORIES[@]} + 1)) && "$REPLY" -gt 0 ]]; then
             if [[ "$DIR" == "Stay in the current directory" ]]; then
                 echo "Selected current directory: $CURRENT_PATH"
-                CLONE_PATH=$CURRENT_PATH
+                CLONE_PATH="$CURRENT_PATH"
                 return
             elif [[ -d "$DIR" ]]; then
                 # Recursively call select_directory for deeper navigation
@@ -76,26 +77,35 @@ mkdir -p "$CLONE_PATH"
 TARGET_PATH="$CLONE_PATH/$REPO_NAME"
 
 echo "Cloning repository to $TARGET_PATH"
-
 echo "Cloning repository from $REPO_URL"
 
-# Clone the repository into the target path
+# Clone the repository into the target path (trying 'develop' branch first)
 git clone "$REPO_URL" "$TARGET_PATH" -b develop
 
 # Check if the clone was successful
 if [ $? -ne 0 ]; then
-    echo "Failed to clone by develop branch. Trying again using deafult branch..."
+    echo "Failed to clone 'develop' branch. Cleaning up and trying again using default branch..."
+    if [ -d "$TARGET_PATH" ]; then
+        rm -rf "$TARGET_PATH"
+    fi
+
     git clone "$REPO_URL" "$TARGET_PATH"
-	if [ $? -ne 0 ]; then
-	    echo "Failed to clone repository."
-	fi
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to clone repository."
+        exit 1
+    fi
 fi
 
 USER_DEFAULT_NAME=$(git config --global user.name)
 
-# Set the local Git config user email
-cd "$TARGET_PATH" || exit
-git config --local user.email "$USER_EMAIL"
-git config --local user.name "$USER_DEFAULT_NAME"
+# Set the local Git config user email and name
+cd "$TARGET_PATH" || exit 1
+if [ -n "$USER_EMAIL" ]; then
+    git config --local user.email "$USER_EMAIL"
+fi
+if [ -n "$USER_DEFAULT_NAME" ]; then
+    git config --local user.name "$USER_DEFAULT_NAME"
+fi
 
-echo "Repository cloned to $TARGET_PATH and user.email set to $USER_EMAIL and user.name set to $USER_DEFAULT_NAME."
+echo "Repository successfully cloned to $TARGET_PATH."
+echo "Local Git configuration updated: user.email='$USER_EMAIL', user.name='$USER_DEFAULT_NAME'."
