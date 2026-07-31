@@ -2,14 +2,24 @@
 
 # Define the root directory where the script is stored
 ROOT_PATH="$(cd "$(dirname "$0")" && pwd)"
+HISTORY_FILE="$ROOT_PATH/.cloned_history"
+
+# Feature 5: Handle --history / -h flag
+if [[ "$1" == "--history" || "$1" == "-h" || "$1" == "history" ]]; then
+    if [ -f "$HISTORY_FILE" ]; then
+        echo "=========================================================="
+        echo " Cloned Repositories History ($HISTORY_FILE)"
+        echo "=========================================================="
+        cat "$HISTORY_FILE"
+    else
+        echo "No clone history found yet."
+    fi
+    exit 0
+fi
 
 # Use environment variables if set
 USER_EMAIL="${USER_EMAIL:-}"
 REPO_URL="${REPO_URL:-}"
-
-if [ -z "$USER_EMAIL" ]; then
-    USER_EMAIL=$(git config --global user.email)    
-fi
 
 # Prompt for repository URL if not provided via parameter or environment
 if [[ -z "$1" && -z "$REPO_URL" ]]; then
@@ -23,12 +33,27 @@ fi
 
 if [ -z "$REPO_URL" ]; then
     echo "Error: No repository URL provided."
+    echo "Usage: $0 <repository-url> | --history"
     exit 1
 fi
 
 # Clean repository URL (remove query parameters like ?version=... and trailing slashes)
 CLEAN_REPO_URL="${REPO_URL%%\?*}"
 CLEAN_REPO_URL="${CLEAN_REPO_URL%/}"
+
+# Feature 3: Auto-detect Profile & Identity based on URL domain/org
+PROFILE_NAME=""
+if [ -z "$USER_EMAIL" ]; then
+    if [[ "$CLEAN_REPO_URL" =~ (hiae|azure\.com/hiae) ]]; then
+        USER_EMAIL="cfe212@einstein.br"
+        PROFILE_NAME="Work (HIAE)"
+    else
+        USER_EMAIL=$(git config --global user.email)
+        PROFILE_NAME="Personal (Global Config)"
+    fi
+else
+    PROFILE_NAME="Custom Environment ($USER_EMAIL)"
+fi
 
 # Extract the repository name from the URL
 REPO_NAME=$(basename -s .git "$CLEAN_REPO_URL")
@@ -149,6 +174,7 @@ if [ -n "$SMART_REL_PATH" ]; then
     RECOMMENDED_TARGET="$ROOT_PATH/$SMART_REL_PATH"
     
     echo "=========================================================="
+    echo "Profile Detected:   $PROFILE_NAME ($USER_EMAIL)"
     echo "Smart Recommendation: $SMART_REL_PATH"
     echo "Full Target Path:     $RECOMMENDED_TARGET"
     echo "=========================================================="
@@ -222,5 +248,11 @@ if [ -n "$USER_DEFAULT_NAME" ]; then
 fi
 
 ACTIVE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Feature 5: Append to Clone History Log
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+echo "[$TIMESTAMP] $REPO_NAME -> $TARGET_PATH ($ACTIVE_BRANCH) [$USER_EMAIL]" >> "$HISTORY_FILE"
+
 echo "Repository successfully cloned to $TARGET_PATH (Active branch: $ACTIVE_BRANCH)."
 echo "Local Git configuration updated: user.email='$USER_EMAIL', user.name='$USER_DEFAULT_NAME'."
+echo "Logged to history: $HISTORY_FILE"
